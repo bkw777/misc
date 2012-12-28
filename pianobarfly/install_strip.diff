@@ -1,7 +1,6 @@
 20121228 bw.aljex@gmail.com
 Strip binary during install
 
-diff -uNr pianobarfly/Makefile pianobarfly_bkw/Makefile
 --- pianobarfly/Makefile	2012-12-28 05:46:43.954944543 -0500
 +++ pianobarfly_bkw/Makefile	2012-12-28 06:11:05.974194305 -0500
 @@ -209,7 +209,7 @@
