@@ -1,0 +1,92 @@
+20121228 bw.aljex@gmail.com - Fix writing id3 tags error
+
+Was using tmpnam() to make a temp filename,
+then rename() to move the temp file over the original file.
+
+rename() requires both source and dest to be on the same fs, so it's
+not safe to use tmpnam() to make a temp filename since that uses /tmp
+and /tmp can often be a separate fs, often tmpfs.
+
+Instead just tack a few extra chars like ".pt" (pianonbar temp)
+onto the end of the normal output mp3/m4a filename for the temp file.
+Ensures write permission as well as same-fs.
+".pt" unlike say ".tmp" should be odd enough to allow for find & delete safely.
+ex: find ./mp3 -name '*.pt' -delete
+
+FIXME: linux-specific limits.h for PATH_MAX
+FIXME: ".pt" hardcoded in two differe places, two different files
+
+diff -ur pianobarfly/src/fly_id3.c pianobarfly_bkw/src/fly_id3.c
+--- pianobarfly/src/fly_id3.c	2012-12-28 12:07:17.976172340 -0500
++++ pianobarfly_bkw/src/fly_id3.c	2012-12-28 12:32:26.539652902 -0500
+@@ -34,6 +34,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <unistd.h>
++#include <linux/limits.h>
+ 
+ #include "fly.h"
+ #include "fly_id3.h"
+@@ -235,8 +236,7 @@
+ 	FILE* audio_file = NULL;
+ 	FILE* tmp_file = NULL;
+ 	uint8_t audio_buffer[BAR_FLY_COPY_BLOCK_SIZE];
+-	char tmp_file_path[L_tmpnam];
+-	char* junk;
++	char tmp_file_path[PATH_MAX];
+ 	size_t read_count;
+ 	size_t write_count;
+ 
+@@ -286,12 +286,10 @@
+ 
+ 	/*
+ 	 * Open the tmp file.
+-	 *
+-	 * Assigning the return value of tmpnam() to a junk pointer to get the
+-	 * compiler to be quiet.
+ 	 */
+-	junk = tmpnam(tmp_file_path);
+-	junk = junk;
++	tmp_file_path[0] = '\0';
++	strcat (tmp_file_path, file_path);
++	strcat (tmp_file_path, ".tmp");
+ 	tmp_file = fopen(tmp_file_path, "w+b");
+ 	if (tmp_file == NULL) {
+ 		BarUiMsg(settings, MSG_ERR, "Could not open the temporary file (%s) "
+diff -ur pianobarfly/src/fly_mp4.c pianobarfly_bkw/src/fly_mp4.c
+--- pianobarfly/src/fly_mp4.c	2012-12-28 12:07:17.980172359 -0500
++++ pianobarfly_bkw/src/fly_mp4.c	2012-12-28 11:50:54.603296057 -0500
+@@ -57,6 +57,7 @@
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
++#include <linux/limits.h>
+ 
+ #include "fly.h"
+ #include "fly_mp4.h"
+@@ -1902,8 +1903,7 @@
+ 	size_t audio_buf_size;
+ 	size_t read_count;
+ 	size_t write_count;
+-	char tmp_file_path[L_tmpnam];
+-	char* junk;
++	char tmp_file_path[PATH_MAX];
+ 	size_t atom_size;
+ 	BarFlyMp4Atom_t* atom;
+ 
+@@ -1912,12 +1912,10 @@
+ 
+ 	/*
+ 	 * Open the tmp file.
+-	 *
+-	 * Assigning the return value of tmpnam() to a junk pointer to get the
+-	 * compiler to be quiet.
+ 	 */
+-	junk = tmpnam(tmp_file_path);
+-	junk = junk;
++	tmp_file_path[0] = '\0';
++	strcat (tmp_file_path, tag->file_path);
++	strcat (tmp_file_path, ".tmp");
+ 	tmp_file = fopen(tmp_file_path, "wb");
+ 	if (tmp_file == NULL) {
+ 		BarUiMsg(settings, MSG_ERR,

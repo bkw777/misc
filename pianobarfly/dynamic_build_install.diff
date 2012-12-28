@@ -1,0 +1,45 @@
+20121228 bw.aljex@gmail.com - fix dynamic build, also strip binary
+
+diff -ur pianobarfly/Makefile pianobarfly_bkw/Makefile
+--- pianobarfly/Makefile	2012-12-28 12:07:17.964172280 -0500
++++ pianobarfly_bkw/Makefile	2012-12-28 11:57:37.125292056 -0500
+@@ -5,7 +5,7 @@
+ LIBDIR:=${PREFIX}/lib
+ INCDIR:=${PREFIX}/include
+ MANDIR:=${PREFIX}/share/man
+-DYNLINK:=0
++DYNLINK:=1
+ 
+ # Respect environment variables set by user; does not work with :=
+ ifeq (${CFLAGS},)
+@@ -107,7 +107,7 @@
+ pianobarfly: ${PIANOBAR_OBJ} ${PIANOBAR_HDR} libpiano.so.0
+ 	@echo "  LINK  $@"
+ 	@${CC} -o $@ ${PIANOBAR_OBJ} ${LDFLAGS} -lao -lpthread -lm -L. -lpiano \
+-			${LIBFAAD_LDFLAGS} ${LIBMAD_LDFLAGS} ${LIBGNUTLS_LDFLAGS}
++			${LIBFAAD_LDFLAGS} ${LIBMAD_LDFLAGS} ${LIBGNUTLS_LDFLAGS} ${LIBID3TAG_LDFLAGS}
+ else
+ pianobarfly: ${PIANOBAR_OBJ} ${PIANOBAR_HDR} ${LIBPIANO_OBJ} ${LIBWAITRESS_OBJ} \
+ 		${LIBWAITRESS_HDR}
+@@ -209,17 +209,18 @@
+ install: pianobarfly
+ endif
+ 	install -d ${DESTDIR}/${BINDIR}/
+-	install -m755 pianobarfly ${DESTDIR}/${BINDIR}/
++	install -s -m755 pianobarfly ${DESTDIR}/${BINDIR}/
+ 	install -d ${DESTDIR}/${MANDIR}/man1/
+ 	install -m644 contrib/pianobarfly.1 ${DESTDIR}/${MANDIR}/man1/
+ 
+ install-libpiano:
+ 	install -d ${DESTDIR}/${LIBDIR}/
+ 	install -m644 libpiano.so.0.0.0 ${DESTDIR}/${LIBDIR}/
+-	ln -s libpiano.so.0.0.0 ${DESTDIR}/${LIBDIR}/libpiano.so.0
+-	ln -s libpiano.so.0 ${DESTDIR}/${LIBDIR}/libpiano.so
++	ln -s -f libpiano.so.0.0.0 ${DESTDIR}/${LIBDIR}/libpiano.so.0
++	ln -s -f libpiano.so.0 ${DESTDIR}/${LIBDIR}/libpiano.so
+ 	install -m644 libpiano.a ${DESTDIR}/${LIBDIR}/
+ 	install -d ${DESTDIR}/${INCDIR}/
+ 	install -m644 src/libpiano/piano.h ${DESTDIR}/${INCDIR}/
++	ldconfig
+ 
+ .PHONY: install install-libpiano test debug all
