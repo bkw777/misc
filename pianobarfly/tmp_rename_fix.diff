@@ -1,0 +1,122 @@
+20121228 bw.aljex@gmail.com
+Based on https://github.com/silentcontender/patches/blob/master/pianobarfly/tmpfs_fix.diff
+But fixes two problems with that:
+1) line 1721 had unecessary O_CREAT yet lacked necessary 3rd argument for mode (permissions)
+   fix: remove O_CREAT
+2) /tmp file was not deleted when sendfile() is used instead of rename()
+   fix: add unlink(tmp_file_path) to the end of BarFlyMove() after close(ofp)
+
+diff -uNr pianobarfly/src/fly.c pianobarfly_bkw/src/fly.c
+--- pianobarfly/src/fly.c	2012-12-28 05:46:43.962944582 -0500
++++ pianobarfly_bkw/src/fly.c	2012-12-28 05:59:14.810667835 -0500
+@@ -39,6 +39,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <sys/stat.h>
++#include <sys/sendfile.h>
+ #include <sys/types.h>
+ #include <unistd.h>
+ #include <waitress.h>
+@@ -1698,5 +1699,49 @@
+ 	return exit_status;
+ }
+ 
+-// vim: set noexpandtab:
++int BarFlyMove(const char* tmp_file_path, const char* file_path,
++		BarSettings_t const* settings)
++{
++	int status;
++	int exit_status = 0;
++	int ifp, ofp;
++	struct stat st;
++	off_t offset = 0;
++
++	status = rename(tmp_file_path, file_path);
++	if (status == 0) {
++		goto end;
++	} else if (errno == EXDEV) {
++		if ((ifp = open(tmp_file_path, O_RDONLY)) == -1)
++			goto error;
++
++		if (fstat(ifp, &st) == -1)
++			goto error;
++
++		if ((ofp = open(file_path, O_WRONLY)) == -1)
++			goto error;
++
++		if (sendfile(ofp, ifp, &offset, st.st_size) == -1)
++ 			goto error;
++
++		goto end;
++	} else {
++		goto error;
++	}
++
++
++error:
++	BarUiMsg(settings, MSG_ERR, "Error moving the audio file (%d:%s).\n",
++			errno, strerror(errno));
++
++	exit_status = -1;
++
++end:
++	close(ifp);
++	close(ofp);
++	unlink(tmp_file_path);
+ 
++	return exit_status;
++}
++
++// vim: set noexpandtab:
+diff -uNr pianobarfly/src/fly.h pianobarfly_bkw/src/fly.h
+--- pianobarfly/src/fly.h	2012-12-28 05:46:43.962944582 -0500
++++ pianobarfly_bkw/src/fly.h	2012-12-28 03:07:10.251471111 -0500
+@@ -211,4 +211,18 @@
+  */
+ int BarFlyWrite(BarFly_t* fly, void const* data, size_t data_size);
+ 
++/**
++ * Moves the temporary file to the desired file location.  Fix for rename()
++ * when /tmp is on a separate filesystem than the desired file location
++ * (e.g. /tmp is on tmpfs)
++ *
++ * @param tmp_file_path File object for temporary file
++ * @param file_path File Object for saved file
++ * @param settings A pointer to the application's settings structure.
++ * @return If renaming/moving the file is successful 0 will be returned,
++ * otherwise -1 is returned.
++ */
++int BarFlyMove(const char* tmp_file_path, const char* file_path,
++        BarSettings_t const* settings);
++
+ #endif /* _FLY_H */
+diff -uNr pianobarfly/src/fly_id3.c pianobarfly_bkw/src/fly_id3.c
+--- pianobarfly/src/fly_id3.c	2012-12-28 05:46:43.966944602 -0500
++++ pianobarfly_bkw/src/fly_id3.c	2012-12-28 03:07:10.251471111 -0500
+@@ -344,10 +344,8 @@
+ 	/*
+ 	 * Overwrite the audio file with the tmp file.
+ 	 */
+-	status_int = rename(tmp_file_path, file_path);
++	status_int = BarFlyMove(tmp_file_path, file_path, settings);
+ 	if (status_int != 0) {
+-		BarUiMsg(settings, MSG_ERR, "Could not overwrite the audio file "
+-				"(%d:%s).\n", errno, strerror(errno));
+ 		goto error;
+ 	}
+ 
+diff -uNr pianobarfly/src/fly_mp4.c pianobarfly_bkw/src/fly_mp4.c
+--- pianobarfly/src/fly_mp4.c	2012-12-28 05:46:43.970944622 -0500
++++ pianobarfly_bkw/src/fly_mp4.c	2012-12-28 03:07:10.255471131 -0500
+@@ -2025,10 +2025,8 @@
+ 	fclose(tag->mp4_file);
+ 	tag->mp4_file = NULL;
+ 
+-	status = rename(tmp_file_path, tag->file_path);
++	status = BarFlyMove(tmp_file_path, tag->file_path, settings);
+ 	if (status != 0) {
+-		BarUiMsg(settings, MSG_ERR, "Error overwriting the MP4 file (%d:%s).\n",
+-				errno, strerror(errno));
+ 		goto error;
+ 	}
+ 

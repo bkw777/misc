@@ -1,0 +1,5 @@
+20121228 bw.aljex@gmail.com
+
+download all *.diff to pianobarfly directory and apply with:
+    patch -p1 < file.diff
+
