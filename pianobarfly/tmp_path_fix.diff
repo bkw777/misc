@@ -49,7 +49,7 @@ diff -ur pianobarfly/src/fly_id3.c pianobarfly_bkw/src/fly_id3.c
 -	junk = junk;
 +	tmp_file_path[0] = '\0';
 +	strcat (tmp_file_path, file_path);
-+	strcat (tmp_file_path, ".tmp");
++	strcat (tmp_file_path, ".pt");
  	tmp_file = fopen(tmp_file_path, "w+b");
  	if (tmp_file == NULL) {
  		BarUiMsg(settings, MSG_ERR, "Could not open the temporary file (%s) "
@@ -86,7 +86,7 @@ diff -ur pianobarfly/src/fly_mp4.c pianobarfly_bkw/src/fly_mp4.c
 -	junk = junk;
 +	tmp_file_path[0] = '\0';
 +	strcat (tmp_file_path, tag->file_path);
-+	strcat (tmp_file_path, ".tmp");
++	strcat (tmp_file_path, ".pt");
  	tmp_file = fopen(tmp_file_path, "wb");
  	if (tmp_file == NULL) {
  		BarUiMsg(settings, MSG_ERR,
