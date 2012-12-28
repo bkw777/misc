@@ -1,5 +1,5 @@
 20121228 bw.aljex@gmail.com
-This is just a copy of a patch someone else posted to pianobarfly github issues page
+This is just a copy of https://github.com/mnocera/pianobarfly/commit/ca0a88a6f88cfd09fa03e3be6cf8e727e024e3f4
 
 diff -uNr pianobarfly/src/settings.c pianobarfly_bkw/src/settings.c
 --- pianobarfly/src/settings.c	2012-12-28 05:46:43.982944682 -0500
