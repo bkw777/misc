@@ -1,0 +1,62 @@
+Add ability to reference autostart_station by name instead of just by id#.
+This comes from Justin Pletcher
+https://github.com/ghuntley/pianobarfly/commit/c386c4395553d39797c8eb835e63154d188d99c7
+But that page doesn't provide a way to download a .diff file.
+This diff was made by hand from reading that page.
+
+diff -ruN pianobarfly/src/libpiano/piano.c pianobarfly_bkw/src/libpiano/piano.c
+--- pianobarfly/src/libpiano/piano.c	2013-02-08 05:47:27.000000000 -0500
++++ pianobarfly_bkw/src/libpiano/piano.c	2013-02-08 07:04:39.000000000 -0500
+@@ -224,6 +224,22 @@
+ 	return NULL;
+ }
+ 
++/*  get station from list by name
++ *  @param search here
++ *  @param search for this
++ *  @return the first station structure matching the given name
++ */
++PianoStation_t *PianoFindStationByName (PianoStation_t *stations,
++		const char *searchStation) {
++	while (stations != NULL) {
++		if (strcmp (stations->name, searchStation) == 0) {
++			return stations;
++		}
++		stations = stations->next;
++	}
++	return NULL;
++}
++
+ /*	convert return value to human-readable string
+  *	@param enum
+  *	@return error string
+diff -ruN pianobarfly/src/libpiano/piano.h pianobarfly_bkw/src/libpiano/piano.h
+--- pianobarfly/src/libpiano/piano.h	2013-02-08 05:47:27.000000000 -0500
++++ pianobarfly_bkw/src/libpiano/piano.h	2013-02-08 07:05:26.000000000 -0500
+@@ -310,6 +310,7 @@
+ void PianoDestroyRequest (PianoRequest_t *);
+ 
+ PianoStation_t *PianoFindStationById (PianoStation_t *, const char *);
++PianoStation_t *PianoFindStationByName (PianoStation_t *, const char *);
+ const char *PianoErrorToStr (PianoReturn_t);
+ 
+ #endif /* _PIANO_H */
+diff -ruN pianobarfly/src/main.c pianobarfly_bkw/src/main.c
+--- pianobarfly/src/main.c	2013-02-08 05:47:27.000000000 -0500
++++ pianobarfly_bkw/src/main.c	2013-02-08 07:10:09.000000000 -0500
+@@ -194,8 +194,13 @@
+ 		app->curStation = PianoFindStationById (app->ph.stations,
+ 				app->settings.autostartStation);
+ 		if (app->curStation == NULL) {
+-			BarUiMsg (&app->settings, MSG_ERR,
+-					"Error: Autostart station not found.\n");
++			//try by name
++			app->curStation = PianoFindStationByName (app->ph.stations,
++				app->settings.autostartStation);
++			if (app->curStation == NULL) {
++				BarUiMsg (&app->settings, MSG_ERR,
++					"Error: Autostart station not found. '%s'\n", app->settings.autostartStation);
++			}
+ 		}
+ 	}
+ 	/* no autostart? ask the user */
